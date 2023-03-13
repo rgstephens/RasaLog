@@ -1,0 +1,9 @@
+.history/
+results/
+models/
+__pycache__
+.vscode/
+*.db
+gactions/
+.rasa/
+tensorboard/

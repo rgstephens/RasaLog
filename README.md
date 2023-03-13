@@ -8,7 +8,7 @@ python rasalog.py rasa.log > rasalog.md
 
 Here's an example of the results:
 
-## processing .vscode/risbot.log
+## processing rasa.log
 
 ## Session Id: **ecdb5829dad64856a06a759ce89e38c8**
 | User | Bot | Actions |

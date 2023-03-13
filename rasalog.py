@@ -44,9 +44,10 @@ with open(sys.argv[1]) as f:
             intent_count += 1
             m = re.search("Received user message '(.+?)' with intent", line).group(1)
             intent = re.search("'name': '(.+?)'", line).group(1)
+            f1 = re.search("'confidence': (.+?)}", line).group(1)[0:4]
             entities = re.findall("'entity': '(.+?)'", line)
             values = re.findall("'value': '(.+?)'", line)
-            print(f"| {m} ({intent}) | | |")
+            print(f"| {m} ({intent}={f1}) | | |")
             i = 0
             for e in entities:
 #            if entities:
@@ -57,15 +58,24 @@ with open(sys.argv[1]) as f:
                     entity_counts[e] = 1
                 else:
                     entity_counts[e] += 1
+        if "Validating extracted slots" in line:
+            # Validating extracted slots: form_restaurant_booking
+            slot = re.search("Validating extracted slots: (.*)", line).group(1)
+            print(f"| | | Extracted slot **{slot}** |")
         if "Request next slot " in line:
             # Request next slot 'phone_number'
             slot = re.search("Request next slot '(.+?)'", line).group(1)
             print(f"| | | Request slot **{slot}** |")
+        if "Predicted next action using " in line:
+            # Predicted next action using RulePolicy
+            prediction_policy = re.search("Predicted next action using (.*).", line).group(1)
         if " with confidence " in line:
             # Predicted next action 'image_form' with confidence 1.00
-            action = re.search("Predicted next action '(.+?)' with confidence (.+?)$", line).group(1)
+            results = re.search("Predicted next action '(.+?)' with confidence (.*).$", line)
+            action = results.group(1)
+            conf = results.group(2)
             if action not in ["action_listen"]:
-                print(f"| | | Predicted **{action}** |")
+                print(f"| | | Predicted **{action}** using **{prediction_policy}** with conf **{conf}** |")
 
             #print(f"user: {m}\n  intent: {intent}")
 

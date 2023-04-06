@@ -7,3 +7,4 @@ __pycache__
 gactions/
 .rasa/
 tensorboard/
+customers/

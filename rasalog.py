@@ -13,8 +13,8 @@ import sys
 intent_count = 0
 entity_counts = {}
 print(f"## processing {sys.argv[1]}\n")
-print("| User | Bot | Action/Slots |")
-print("|---|---|---|")
+print("| User | Bot | Action | Slot |")
+print("|---|---|---|---|")
 with open(sys.argv[1]) as f:
     while True:
         line = f.readline()
@@ -23,35 +23,44 @@ with open(sys.argv[1]) as f:
             break
         if "Starting a new session" in line:
             # Starting a new session for conversation ID 'lex'
+            # Starting a new session for conversation ID '{"workspaceId":"7b1af13b-0c42-40d3-9f0d-0e105f59a0f7","visitorId":"640eb43e43b804765ec7859f","conversationId":"640eb44f43b804765ec785a4"}'.
             print("")
-            session_id = re.search("Starting a new session for conversation ID '(.+)'", line).group(1)
+            conversation_id = re.search('"conversationId":"(.+)"', line)
+            if conversation_id:
+                session_id = conversation_id.group(1)
+            else:
+                session_id = None
+            # session_id = re.search('"conversationId":"(.+)"', line).group(1)
+            if not session_id:
+                session_id = re.search("Starting a new session for conversation ID '(.+)'", line).group(1)
             print(f"## Session Id: **{session_id}**")
-            print("| User | Bot | Actions |")
-            print("|---|---|---|")
+            print("| User | Bot | Actions | Slot |")
+            print("|---|---|---|---|")
         if "BotUttered" in line:
             # BotUttered('What is your phone number?',
+            # Action 'form_contact_us' ended with events '[SlotSet(key: requested_slot, value: form_contact_us_last_name), BotUttered('None', {"elements": null, "quick_replies": null, "buttons": null, "attachment": null, "image": null, "custom": {"field": {"custom_provider": null, "custom_type": null, "index": 1, "key": "contact_us_last_name", "options": null, "question": "And your last name?", "required": true, "title": "Last Name", "type": "LAST_NAME"}, "form": {"fields": {"form_contact_us_email": "None", "form_contact_us_first_name": "dfhgfhfgh", "form_contact_us_last_name": "None", "form_contact_us_phone_number": "None"}, "fields_count": 4, "id": "contact_us", "title": "contact_us"}, "id": "449838", "type": "FORM_CS"}}, {"utter_action": "utter_ask_form_contact_us_form_contact_us_last_name"}, 1678691402.3533535)]'
             bot_uttered = re.search("BotUttered\('(.+)',", line).group(1)
-            print(f"| | {bot_uttered} | |")
+            print(f"| | BotUttered: {bot_uttered} | | |")
         if "Starting a new session for conversation ID" in line:
             # Starting a new session for conversation ID '+12063844441'
             id = re.search("Starting a new session for conversation ID '(.+?)'", line).group(1)
-            print(f"| | | New session {id} |")
+            print(f"| | | New session {id} | |")
         if "Calling action endpoint to run action" in line:
             # Calling action endpoint to run action 'action_session_start'
             action = re.search("Calling action endpoint to run action '(.+?)'", line).group(1)
-            print(f"| | | Calling action {action} |")
+            print(f"| | | Calling action {action} | |")
         if "Received user message" in line:
             intent_count += 1
-            m = re.search("Received user message '(.+?)' with intent", line).group(1)
+            m = re.search("Received user message '(.*)' with intent", line).group(1)
             intent = re.search("'name': '(.+?)'", line).group(1)
             f1 = re.search("'confidence': (.+?)}", line).group(1)[0:4]
             entities = re.findall("'entity': '(.+?)'", line)
             values = re.findall("'value': '(.+?)'", line)
-            print(f"| {m} ({intent}={f1}) | | |")
+            print(f"| {m} ({intent}={f1}) | | | |")
             i = 0
             for e in entities:
 #            if entities:
-                print(f"| | | {e}=**{values[i]}** |")
+                print(f"| | | {e}=**{values[i]}** | |")
                 i += 1
                 # update entity counters
                 if e not in entity_counts.keys():
@@ -61,21 +70,23 @@ with open(sys.argv[1]) as f:
         if "Validating extracted slots" in line:
             # Validating extracted slots: form_restaurant_booking
             slot = re.search("Validating extracted slots: (.*)", line).group(1)
-            print(f"| | | Extracted slot **{slot}** |")
+            print(f"| | | | Extracted slot **{slot}** |")
         if "Request next slot " in line:
             # Request next slot 'phone_number'
             slot = re.search("Request next slot '(.+?)'", line).group(1)
-            print(f"| | | Request slot **{slot}** |")
+            print(f"| | | | Request slot **{slot}** |")
         if "Predicted next action using " in line:
             # Predicted next action using RulePolicy
+            # Predicted next action using RulePolicy.
             prediction_policy = re.search("Predicted next action using (.*).", line).group(1)
         if " with confidence " in line:
             # Predicted next action 'image_form' with confidence 1.00
+            # Predicted next action 'action_listen' with confidence 1.00.
             results = re.search("Predicted next action '(.+?)' with confidence (.*).$", line)
             action = results.group(1)
             conf = results.group(2)
-            if action not in ["action_listen"]:
-                print(f"| | | Predicted **{action}** using **{prediction_policy}** with conf **{conf}** |")
+            # if action not in ["action_listen"]:
+            print(f"| | | Predicted **{action}** using **{prediction_policy}** with conf **{conf}** | |")
 
             #print(f"user: {m}\n  intent: {intent}")
 

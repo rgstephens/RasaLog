@@ -124,6 +124,18 @@ with open(sys.argv[1]) as f:
             # flow.execution.loop            flow_id=pattern_continue_interrupted previous_step_id=START
             flow_id = re.search("flow_id=(.*) ", line).group(1)
             print(f"| {time} | | |  | flow_start/{flow_id} |")
+            # WARNING  langchain.llms.base  - Retrying langchain.llms.openai.completion_with_retry.<locals>._completion_with_retry in 4.0 seconds as it raised Timeout: Request timed out: HTTPSConnectionPool(host='api.openai.com', port=443): Read timed out. (read timeout=5).
+        if " ERROR " in line:
+            if "Request timed out" in line:
+                # flow.execution.loop            flow_id=pattern_continue_interrupted previous_step_id=START
+                # ERROR    rasa_plus.ml.enterprise_search_policy  - {"error": "Timeout(message=\"Request timed out: HTTPSConnectionPool(host='api.openai.com', port=443): Read timed out. (read timeout=5)\", http_status=None, request_id=None)", "event": "nlg.llm.error", "level": "error"}
+                print(f"| {time} | | |  | **ERROR: TIMEOUT** |")
+            elif "asyncio" in line and "Task was destroyed but it is pending!" in line:
+                # asyncio  - Task was destroyed but it is pending!
+                print(f"| {time} | | |  | **ERROR asyncio** |")
+            else:
+                error_msg = re.search("ERROR    (.*)$", line).group(1)
+                print(f"| {time} | | |  | **ERROR {error_msg}** |")
 
             #print(f"user: {m}\n  intent: {intent}")
 

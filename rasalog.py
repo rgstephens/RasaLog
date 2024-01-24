@@ -21,9 +21,10 @@ def get_timestamp(line: str) -> str:
 
 intent_count = 0
 entity_counts = {}
+user_msg_time = None
 print(f"# Rasa Log Analysis\n")
 print(f"- processing `{sys.argv[1]}`\n")
-print("| Time | User | Bot | Action | Slot |")
+print("| Time | User | Bot | Action | Slot/Flow |")
 print("|---:|---|---|---|---|")
 with open(sys.argv[1]) as f:
     while True:
@@ -44,7 +45,7 @@ with open(sys.argv[1]) as f:
             # session_id = re.search('"conversationId":"(.+)"', line).group(1)
             if not session_id:
                 session_id = re.search("Starting a new session for conversation ID '(.+)'", line).group(1)
-            print(f"## Session Id: **{session_id}**")
+            print(f"## Session Id: **{session_id}**\n")
             print("| Time | User | Bot | Actions | Slot |")
             print("|---:|---|---|---|---|")
         if "BotUttered" in line:
@@ -58,8 +59,8 @@ with open(sys.argv[1]) as f:
             # Action 'form_contact_us' ended with events '[SlotSet(key: requested_slot, value: form_contact_us_last_name), BotUttered('None', {"elements": null, "quick_replies": null, "buttons": null, "attachment": null, "image": null, "custom": {"field": {"custom_provider": null, "custom_type": null, "index": 1, "key": "contact_us_last_name", "options": null, "question": "And your last name?", "required": true, "title": "Last Name", "type": "LAST_NAME"}, "form": {"fields": {"form_contact_us_email": "None", "form_contact_us_first_name": "dfhgfhfgh", "form_contact_us_last_name": "None", "form_contact_us_phone_number": "None"}, "fields_count": 4, "id": "contact_us", "title": "contact_us"}, "id": "449838", "type": "FORM_CS"}}, {"utter_action": "utter_ask_form_contact_us_form_contact_us_last_name"}, 1678691402.3533535)]'
             bot_uttered = re.search("BotUttered\('(.+)',", line).group(1)
             if len(bot_uttered) > 10:
-                bot_uttered = f"{bot_uttered[0:10]}... ({len(bot_uttered)} chars)"
-            print(f"| {time} | | | BotUttered: {bot_uttered}, {elapsed_time_msg} | |")
+                bot_uttered = f"{bot_uttered[0:40]}... ({len(bot_uttered)}b)"
+            print(f"| {time} | | {bot_uttered} | {elapsed_time_msg} | |")
         if "Starting a new session for conversation ID" in line:
             # Starting a new session for conversation ID '+12063844441'
             id = re.search("Starting a new session for conversation ID '(.+?)'", line).group(1)
@@ -67,7 +68,13 @@ with open(sys.argv[1]) as f:
         if "Calling action endpoint to run action" in line:
             # Calling action endpoint to run action 'action_session_start'
             action = re.search("Calling action endpoint to run action '(.+?)'", line).group(1)
-            print(f"| {time} | | | Calling action {action} | |")
+            print(f"| {time} | | | **{action}** | |")
+        if "[UserMessage(text" in line:
+            # [UserMessage(text: who is the vice president of enrollment, sender_id: d9f23a29f6de4e15a3af15b91075f14a)]
+            user_msg_time = time
+            intent_count += 1
+            m = re.search("\[UserMessage\(text: (.*), sender_id", line).group(1)
+            print(f"| {time} | {m} | | | |")
         if "Received user message" in line:
             user_msg_time = time
             intent_count += 1
@@ -108,7 +115,15 @@ with open(sys.argv[1]) as f:
             action = results.group(1)
             conf = results.group(2)
             # if action not in ["action_listen"]:
-            print(f"| {time} | | | Predicted **{action}** using **{prediction_policy}** with conf **{conf}** | |")
+            print(f"| {time} | | | {action}/{prediction_policy} ({conf}) | |")
+        if " flow.step.run.flow_end " in line:
+            # flow.step.run.flow_end         flow_id=event_signup step_id=END
+            flow_id = re.search("flow_id=(.*) ", line).group(1)
+            print(f"| {time} | | |  | flow_end/{flow_id} |")
+        if " flow.execution.loop " in line:
+            # flow.execution.loop            flow_id=pattern_continue_interrupted previous_step_id=START
+            flow_id = re.search("flow_id=(.*) ", line).group(1)
+            print(f"| {time} | | |  | flow_start/{flow_id} |")
 
             #print(f"user: {m}\n  intent: {intent}")
 

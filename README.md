@@ -2,6 +2,8 @@
 
 This is a script to help review [Rasa](https://rasa.com) open source debug logs. It takes a Rasa logfile as input and writes a markdown table to stdout.
 
+The script has been updated to support Rasa Pro [flows](https://rasa.com/docs/rasa-pro/concepts/flows).
+
 ```sh
 python rasalog.py rasa.log > rasalog.md
 ```
@@ -11,6 +13,7 @@ Here's an example of the results:
 ## processing rasa.log
 
 ## Session Id: **ecdb5829dad64856a06a759ce89e38c8**
+
 | User | Bot | Actions |
 |---|---|---|
 | | | New session ecdb5829dad64856a06a759ce89e38c8 |

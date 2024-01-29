@@ -112,9 +112,7 @@ with open(sys.argv[1]) as f:
         if line_cnt > 200:
             break
 
-print("\n## Sessions\n")
-print("| Time | User | Bot | Action | Slot\/Flow |")
-print("|---:|---|---|---|---|")
+print("\n## Sessions")
 with open(sys.argv[1]) as f:
     while True:
         line = f.readline()
@@ -136,7 +134,7 @@ with open(sys.argv[1]) as f:
                 session_id = re.search(
                     "Starting a new session for conversation ID '(.+)'", line
                 ).group(1)
-            print(f"## Session Id: **{session_id}**\n")
+            print(f"### Session Id: **{session_id}**\n")
             print("| Time | User | Bot | Actions | Slot |")
             print("|---:|---|---|---|---|")
         if "BotUttered" in line:

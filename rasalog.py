@@ -135,7 +135,7 @@ with open(sys.argv[1]) as f:
                     "Starting a new session for conversation ID '(.+)'", line
                 ).group(1)
             print(f"### Session Id: **{session_id}**\n")
-            print("| Time | User | Bot | Actions | Slot |")
+            print("| Time | User | Bot | Actions | Slot\/Flow |")
             print("|---:|---|---|---|---|")
         if "BotUttered" in line:
             if time and user_msg_time:
@@ -146,10 +146,13 @@ with open(sys.argv[1]) as f:
             user_msg_time = None
             # BotUttered('What is your phone number?',
             # Action 'form_contact_us' ended with events '[SlotSet(key: requested_slot, value: form_contact_us_last_name), BotUttered('None', {"elements": null, "quick_replies": null, "buttons": null, "attachment": null, "image": null, "custom": {"field": {"custom_provider": null, "custom_type": null, "index": 1, "key": "contact_us_last_name", "options": null, "question": "And your last name?", "required": true, "title": "Last Name", "type": "LAST_NAME"}, "form": {"fields": {"form_contact_us_email": "None", "form_contact_us_first_name": "dfhgfhfgh", "form_contact_us_last_name": "None", "form_contact_us_phone_number": "None"}, "fields_count": 4, "id": "contact_us", "title": "contact_us"}, "id": "449838", "type": "FORM_CS"}}, {"utter_action": "utter_ask_form_contact_us_form_contact_us_last_name"}, 1678691402.3533535)]'
-            bot_uttered = re.search("BotUttered\('(.+)',", line).group(1)
-            if len(bot_uttered) > 10:
-                bot_uttered = f"{bot_uttered[0:40]}... ({len(bot_uttered)}b)"
-            print(f"| {time} | | {bot_uttered} | {elapsed_time_msg} | |")
+            bot_uttered = re.search("BotUttered\('(.+)',", line)
+            if bot_uttered:
+                bot_uttered = bot_uttered.group(1)
+                max_utter_len = 40
+                if len(bot_uttered) > max_utter_len:
+                    bot_uttered = f"{bot_uttered[0:max_utter_len]}... ({len(bot_uttered)}b)"
+                print(f"| {time} | | {bot_uttered} | {elapsed_time_msg} | |")
         if "Starting a new session for conversation ID" in line:
             # Starting a new session for conversation ID '+12063844441'
             id = re.search(
@@ -192,7 +195,8 @@ with open(sys.argv[1]) as f:
             slot_details = re.search("Validating extracted slots: (.*)", line)
             if slot_details:
                 slot = slot_details.group(1)
-                print(f"| {time} | | | | Extracted slot **{slot}** |")
+                if slot:
+                    print(f"| {time} | | | | Extracted slot **{slot}** |")
         if "Request next slot " in line:
             # Request next slot 'phone_number'
             slot = re.search("Request next slot '(.+?)'", line).group(1)
@@ -213,6 +217,10 @@ with open(sys.argv[1]) as f:
             conf = results.group(2)
             # if action not in ["action_listen"]:
             print(f"| {time} | | | {action}/{prediction_policy} ({conf}) | |")
+        if " flow.step.run.action           context=" in line:
+            # flow.step.run.action           context={'context': {'frame_id': 'KOFLX5JR', 'flow_id': 'show_event_dates', 'step_id': '0_collect_event_name', 'collect': 'event_name', 'utter': 'utter_ask_event_name', 'rejections': [], 'type': 'flow', 'frame_type': 'interrupt'}} flow_id=pattern_collect_information step_id=3_action_listen
+            flow_id = re.search("\'flow_id\': \'(.+)\', \'step", line).group(1)
+            print(f"| {time} | | |  | context/flow_id/{flow_id} |")
         if " flow.step.run.flow_end " in line:
             # flow.step.run.flow_end         flow_id=event_signup step_id=END
             flow_id = re.search("flow_id=(.*) ", line).group(1)

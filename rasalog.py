@@ -201,6 +201,16 @@ with open(sys.argv[1]) as f:
             # Request next slot 'phone_number'
             slot = re.search("Request next slot '(.+?)'", line).group(1)
             print(f"| {time} | | | | Request slot **{slot}** |")
+        if "rasa.core.policies.flows.flow_executor  - [warning  ]" in line:
+            # rasa.core.policies.flows.flow_executor  - [warning  ] flow.step.run.action.unknown   action=utter_ask_event_name flow_id=pattern_collect_information step_id=ask_collect
+            if "flow.step.run.action.unknown" in line:
+                action = re.search("action=(.*) f", line).group(1)
+                flow_id = re.search("flow_id=(.*) ", line).group(1)
+                step_id = re.search("flow.step.run.action.unknown   (.*)", line).group(1)
+                print(f"| {time} | | | {action} | **unknown action: {action}** |")
+            else:
+                error = re.search("action=(.*) ", line).group(1)
+                print(f"| {time} | | | | Flow **Warning**: {error} |")
         if "Predicted next action using " in line:
             # Predicted next action using RulePolicy
             # Predicted next action using RulePolicy.

@@ -135,7 +135,7 @@ with open(sys.argv[1]) as f:
                     "Starting a new session for conversation ID '(.+)'", line
                 ).group(1)
             print(f"### Session Id: **{session_id}**\n")
-            print("| Time | User | Bot | Actions | Slot\/Flow |")
+            print("| Time | User | Bot | Actions | Slot/Flow |")
             print("|---:|---|---|---|---|")
         if "BotUttered" in line:
             if time and user_msg_time:
@@ -153,6 +153,9 @@ with open(sys.argv[1]) as f:
                 if len(bot_uttered) > max_utter_len:
                     bot_uttered = f"{bot_uttered[0:max_utter_len]}... ({len(bot_uttered)}b)"
                 print(f"| {time} | | {bot_uttered} | {elapsed_time_msg} | |")
+        if "code injection attempt" in line:
+            # code injection attempt
+            print(f"| {time} | | | no action will be taken | code injection attempt |")
         if "Starting a new session for conversation ID" in line:
             # Starting a new session for conversation ID '+12063844441'
             id = re.search(
@@ -167,9 +170,14 @@ with open(sys.argv[1]) as f:
             print(f"| {time} | | | **{action}** | |")
         if "[UserMessage(text" in line:
             # [UserMessage(text: who is the vice president of enrollment, sender_id: d9f23a29f6de4e15a3af15b91075f14a)]
+            # [UserMessage(text: abc def [abc]
             user_msg_time = time
             intent_count += 1
-            m = re.search("\[UserMessage\(text: (.*), sender_id", line).group(1)
+            m = ""
+            # m = re.search("\[UserMessage\(text: (.*)[,\n]", line)
+            m = re.search("\[UserMessage\(text: (.*?)(?=(, sender_id:|\]$))", line)
+            if m:
+                m = m.group(1)
             print(f"| {time} | {m} | | | |")
         if "Received user message" in line:
             user_msg_time = time
@@ -231,14 +239,42 @@ with open(sys.argv[1]) as f:
             # flow.step.run.action           context={'context': {'frame_id': 'KOFLX5JR', 'flow_id': 'show_event_dates', 'step_id': '0_collect_event_name', 'collect': 'event_name', 'utter': 'utter_ask_event_name', 'rejections': [], 'type': 'flow', 'frame_type': 'interrupt'}} flow_id=pattern_collect_information step_id=3_action_listen
             flow_id = re.search("\'flow_id\': \'(.+)\', \'step", line).group(1)
             print(f"| {time} | | |  | context/flow_id/{flow_id} |")
+        if "Circuit breaker tripped" in line:
+            # WARNING  rasa.core.processor  - Circuit breaker tripped. Stopped predicting more actions for sender 'pytest1'.
+            print(f"| {time} | | |  | **Circuit breaker tripped** |")
         if " flow.step.run.flow_end " in line:
             # flow.step.run.flow_end         flow_id=event_signup step_id=END
             flow_id = re.search("flow_id=(.*) ", line).group(1)
-            print(f"| {time} | | |  | flow_end/{flow_id} |")
-        if " flow.execution.loop " in line:
+            if flow_id.startswith("pattern_"):
+                print(f"| {time} | | |  | flow_end/{flow_id} |")
+            else:
+                print(f"| {time} | | |  | **flow_end/{flow_id}** |")
+        if '{"previous_step_id": "START", "event": "flow.execution.loop", "flow_id": ' in line:
+            # {"previous_step_id": "START", "event": "flow.execution.loop", "flow_id": "show_events", "level": "debug"}
+            flow_id = re.search('"flow_id": "(.*)",', line).group(1)
+            if flow_id.startswith("pattern_"):
+                print(f"| {time} | | |  | flow_start/{flow_id} |")
+            else:
+                print(f"| {time} | | |  | **flow_start/{flow_id}** |")
+        if '{"event": "flow.step.run.flow_end"' in line:
+            # {"event": "flow.step.run.flow_end", "flow_id": "pattern_collect_information", "step_id": "END", "level": "debug"}
+            # {"event": "flow.step.run.flow_end", "step_id": "END", "flow_id": "pattern_collect_information", "level": "debug"}\n
+            # {"event": "flow.step.run.flow_end", "step_id": "END", "flow_id": "show_event_dates", "level": "debug"}
+            # {"event": "flow.step.run.flow_end", "step_id": "END", "flow_id": "pattern_collect_information", "level": "debug"}\n'
+            flow_id = re.search('"flow_id": "(.*)",', line)
+            if flow_id:
+                flow_id = flow_id.group(1)
+                if flow_id.startswith("pattern_"):
+                    print(f"| {time} | | |  | flow_end/{flow_id} |")
+                else:
+                    print(f"| {time} | | |  | **flow_end/{flow_id}** |")
+        if " flow.execution.loop " in line and "previous_step_id=START" in line:
             # flow.execution.loop            flow_id=pattern_continue_interrupted previous_step_id=START
             flow_id = re.search("flow_id=(.*) ", line).group(1)
-            print(f"| {time} | | |  | flow_start/{flow_id} |")
+            if flow_id.startswith("pattern_"):
+                print(f"| {time} | | |  | flow_start/{flow_id} |")
+            else:
+                print(f"| {time} | | |  | **flow_start/{flow_id}** |")
             # WARNING  langchain.llms.base  - Retrying langchain.llms.openai.completion_with_retry.<locals>._completion_with_retry in 4.0 seconds as it raised Timeout: Request timed out: HTTPSConnectionPool(host='api.openai.com', port=443): Read timed out. (read timeout=5).
         if " ERROR " in line:
             if "Request timed out" in line and "nlg.llm.error" in line:

@@ -60,6 +60,7 @@ with open(sys.argv[1]) as f:
             print(f"| embedding_model | {model} |")
         if "\"enterprise_search_policy.load" in line:
             # rasa_plus.ml.enterprise_search_policy  - {"config": {"priority": 6, "vector_store": {"type": "faiss", "source": "./docs/txt"}}, "event": "enterprise_search_policy.load", "level": "info"}
+            # {"config": {"priority": 6, "vector_store": {"type": "qdrant", "source": "./docs", "threshold": 0.5, "collection": "rasa", "host": "localhost", "port": 6333, "content_payload_key": "page_content", "metadata_payload_key": "metadata"}, "prompt": "prompts/enterprise_search_prompt_template.jinja2"}, "event": "enterprise_search_policy.load", "level": "info"}
             llm = re.search("\"model_name\": \"(.+?)\"", line)
             if llm:
                 llm = llm.group(1)
@@ -67,7 +68,16 @@ with open(sys.argv[1]) as f:
                 llm = "gpt-3.5-turbo"
             print(f"| entsearch.llm | {llm} |")
             vector_store = re.search("\"type\": \"(.+?)\",", line).group(1)
-            print(f"| vector_store | {vector_store} |")
+            vector_store_source = re.search("\"source\": \"(.+?)\",", line).group(1)
+            vector_store_host = re.search("\"host\": \"(.+?)\",", line)
+            if vector_store_host:
+                vector_store_host = re.search("\"host\": \"(.+?)\",", line).group(1)
+            vector_store_port = re.search("\"port\": (.+?),", line)
+            if vector_store_port:
+                vector_store_port = re.search("\"port\": (.+?),", line).group(1)
+            print(f"| vector_store type | {vector_store} |")
+            print(f"| vector_store host | {vector_store_host}:{vector_store_port} |")
+            print(f"| vector_store source | {vector_store_source} |")
         if "enterprise_search_policy.load  config=" in line:
             # enterprise_search_policy.load  config={'priority': 6, 'vector_store': {'type': 'faiss', 'source': './docs'}}
             # enterprise_search_policy.load  config={'priority': 6, 'vector_store': {'type': 'faiss', 'source': './docs'}, 'llm': {'model_name': 'gpt-4'}}
@@ -86,10 +96,13 @@ with open(sys.argv[1]) as f:
             if llm_type:
                 llm_type = llm_type.group(1)
             else:
-                llm_type = re.search("\"_type\": \"(.+?)\",", line)
+                llm_type = re.search("\"_type\": \"(.+?)\"", line)
                 if llm_type:
                     llm_type = llm_type.group(1)
-            model_name = re.search("\"model_name\": \"(.+?)\"", line).group(1)
+            if "model_name" in line:
+                model_name = re.search("\"model_name\": \"(.+?)\"", line).group(1)
+            if "model_id" in line:
+                model_name = re.search("\"model_id\": \"(.+?)\"", line).group(1)
             print(f"| llm_type | {llm_type} |")
             print(f"| llm_model_name | {model_name} |")
             break
@@ -140,7 +153,7 @@ with open(sys.argv[1]) as f:
         if "BotUttered" in line:
             if time and user_msg_time:
                 elapsed_time = float(time[6:8]) - float(user_msg_time[6:8])
-                elapsed_time_msg = f"(Latency **{elapsed_time} secs**)"
+                elapsed_time_msg = f"(**{elapsed_time} secs**)"
             else:
                 elapsed_time_msg = ""
             user_msg_time = None
@@ -219,6 +232,9 @@ with open(sys.argv[1]) as f:
             else:
                 error = re.search("action=(.*) ", line).group(1)
                 print(f"| {time} | | | | Flow **Warning**: {error} |")
+        if "Rate limit reached" in line:
+            # 2024-04-08 08:07:14 WARNING  langchain.llms.base  - Retrying langchain.llms.openai.acompletion_with_retry.<locals>._completion_with_retry in 4.0 seconds as it raised RateLimitError: Rate limit reached for gpt-4 in organization org-Ezdb1TIXKbHeoz5PPwZ5Gwvg on tokens per min (TPM): Limit 10000, Used 9015, Requested 4456. Please try again in 20.826s. Visit https://platform.openai.com/account/rate-limits to learn more..
+            print(f"| {time} | | | | **Rate limit reached**|")
         if "Predicted next action using " in line:
             # Predicted next action using RulePolicy
             # Predicted next action using RulePolicy.
@@ -245,7 +261,9 @@ with open(sys.argv[1]) as f:
         if " flow.step.run.flow_end " in line:
             # flow.step.run.flow_end         flow_id=event_signup step_id=END
             flow_id = re.search("flow_id=(.*) ", line).group(1)
-            if flow_id.startswith("pattern_"):
+            if flow_id.startswith("pattern_search"):
+                print(f"| {time} | | |  | flow_end/{flow_id} |")
+            elif flow_id.startswith("pattern_"):
                 print(f"| {time} | | |  | flow_end/{flow_id} |")
             else:
                 print(f"| {time} | | |  | **flow_end/{flow_id}** |")
@@ -256,6 +274,13 @@ with open(sys.argv[1]) as f:
                 print(f"| {time} | | |  | flow_start/{flow_id} |")
             else:
                 print(f"| {time} | | |  | **flow_start/{flow_id}** |")
+        if "commands.set_slot_command" in line and "SetSlotCommand" in line:
+            # SetSlotCommand(name='student_email', value='minimal9@student.com')
+            try:
+                slot_name, slot_value = re.search('SetSlotCommand\(name=\'(.+?)\', value=(.+?)\)', line).groups()
+            except:
+                print(f"ERROR: {line}")
+            print(f"| {time} | | |  | Set slot **{slot_name}={slot_value}** |")
         if '{"event": "flow.step.run.flow_end"' in line:
             # {"event": "flow.step.run.flow_end", "flow_id": "pattern_collect_information", "step_id": "END", "level": "debug"}
             # {"event": "flow.step.run.flow_end", "step_id": "END", "flow_id": "pattern_collect_information", "level": "debug"}\n
@@ -264,14 +289,18 @@ with open(sys.argv[1]) as f:
             flow_id = re.search('"flow_id": "(.*)",', line)
             if flow_id:
                 flow_id = flow_id.group(1)
-                if flow_id.startswith("pattern_"):
+                if flow_id.startswith("pattern_search"):
+                    print(f"| {time} | | |  | **flow_end/{flow_id}** |")
+                elif flow_id.startswith("pattern_"):
                     print(f"| {time} | | |  | flow_end/{flow_id} |")
                 else:
                     print(f"| {time} | | |  | **flow_end/{flow_id}** |")
         if " flow.execution.loop " in line and "previous_step_id=START" in line:
             # flow.execution.loop            flow_id=pattern_continue_interrupted previous_step_id=START
             flow_id = re.search("flow_id=(.*) ", line).group(1)
-            if flow_id.startswith("pattern_"):
+            if flow_id.startswith("pattern_search"):
+                print(f"| {time} | | |  | **flow_start/{flow_id}** |")
+            elif flow_id.startswith("pattern_"):
                 print(f"| {time} | | |  | flow_start/{flow_id} |")
             else:
                 print(f"| {time} | | |  | **flow_start/{flow_id}** |")

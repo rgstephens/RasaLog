@@ -166,6 +166,14 @@ with open(sys.argv[1]) as f:
                 if len(bot_uttered) > max_utter_len:
                     bot_uttered = f"{bot_uttered[0:max_utter_len]}... ({len(bot_uttered)}b)"
                 print(f"| {time} | | {bot_uttered} | {elapsed_time_msg} | |")
+            # "utter_action": "utter_incorrect_phone_number_format_final",
+            utter_action = re.search("utter_action\": \"(.+)\",", line)
+            if utter_action:
+                bot_uttered = utter_action.group(1)
+                max_utter_len = 40
+                if len(bot_uttered) > max_utter_len:
+                    bot_uttered = f"{bot_uttered[0:max_utter_len]}... ({len(bot_uttered)}b)"
+                print(f"| {time} | | {bot_uttered} | {elapsed_time_msg} | |")
         if "code injection attempt" in line:
             # code injection attempt
             print(f"| {time} | | | no action will be taken | code injection attempt |")
@@ -222,6 +230,26 @@ with open(sys.argv[1]) as f:
             # Request next slot 'phone_number'
             slot = re.search("Request next slot '(.+?)'", line).group(1)
             print(f"| {time} | | | | Request slot **{slot}** |")
+        if "action_set_requested_slot rasa_events" in line:
+            # processor.actions.log          action_name=action_set_requested_slot rasa_events=[SlotSet(key: requested_slot, value: feedback_rating)]
+            match = re.search("SlotSet\(key: (.+?), value: (.+?)\)", line)
+            if match:
+                slot, slot_value = match.groups()
+                print(f"| {time} | | | | SlotSet **{slot}={slot_value}** |")
+        if "parse_data_intent=" in line:
+            # parse_data_intent={'name': 'affirm', 'confidence': 0.9608845571024145} parse_data_text=wonderful
+            match = re.search(r"name': '(.+?)', 'confidence': (\d\.\d{3})", line)
+            if match:
+                intent_name, confidence = match.groups()
+                print(f"| {time} | | | intent=**{intent_name}**, conf={confidence} | |")
+        if "formatted_response" in line:
+            if "SetSlot" in line:
+                # rasa.shared.providers.llm._base_litellm_client  - [debug    ] base_litellm_client.formatted_response formatted_response={'id': 'chatcmpl-AQdxKMjXzkHIpyEQkloK9ytJionGI', 'choices': ['SetSlot(feedback_rating, wonderful)'], 'created': 1730913482, 'model': 'gpt-4-0613', 'usage': {'prompt_tokens': 1449, 'completion_tokens': 8, 'total_tokens': 1457}, 'additional_info': None}
+                # ['SetSlot(feedback_rating, wonderful)']
+                match = re.search(r"SetSlot\((.+?), (.+?)\)", line)
+                if match:
+                    slot, slot_value = match.groups()
+                    print(f"| {time} | | | | llm SlotSet **{slot}={slot_value}** |")
         if "rasa.core.policies.flows.flow_executor  - [warning  ]" in line:
             # rasa.core.policies.flows.flow_executor  - [warning  ] flow.step.run.action.unknown   action=utter_ask_event_name flow_id=pattern_collect_information step_id=ask_collect
             if "flow.step.run.action.unknown" in line:

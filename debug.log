@@ -1,0 +1,7 @@
+pyenv: rasa: command not found
+
+The `rasa' command exists in these Python versions:
+  3.9.16
+
+Note: See 'pyenv help global' for tips on allowing both
+      python2 and python3 to be found.
